@@ -8,6 +8,9 @@
 #include <chrono>
 #include <functional>
 #include <thread>
+#include <filesystem>
+
+#include <opencv2/opencv.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
@@ -15,8 +18,10 @@
 #include <sensor_msgs/msg/image.hpp>
 
 using std::placeholders::_1;
+namespace fs = std::filesystem;
 
 #include "misora2_dt_client/cv_mat_type_adapter.hpp"
+#include "misora2_dt_client/gui_tool.hpp"
 
 namespace dt_client_component
 {
@@ -24,16 +29,27 @@ class DTClient : public rclcpp::Node
 {
     using MyAdaptedType = rclcpp::TypeAdapter<cv::Mat, sensor_msgs::msg::Image>;
     public:
-    std::string result_data, id;
-    cv::Mat result_image;
+    std::string result_data, qr_id;
+    cv::Mat result_image, qr_image;
+    std::map<std::string, bool> flag_list = {{"qr",false},{"other",false}};// 何が届いたか
+    bool window_flag = false;
+    bool should_close = false;
 
+    // std_msgs::msg::Bool msg_B;
     explicit DTClient(const rclcpp::NodeOptions &options);
     DTClient() : DTClient(rclcpp::NodeOptions{}) {}
 
     private:
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr receive_id_;
+    void open_window();// 確認画面を表示
+    void create_save_folder(const std::string& S);// 各タスクごとにすべてのデータを保存しとく
+    rclcpp::TimerBase::SharedPtr timer_;// 画面表示関数
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr receive_qr_id_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr receive_data_;
     rclcpp::Subscription<MyAdaptedType>::SharedPtr receive_image_;
+    rclcpp::Subscription<MyAdaptedType>::SharedPtr receive_qr_image_;
+
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr receive_flag_;// 画面立ち上げの信号
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr send_flag_;
 };
 } // namespace dt_client_component
 

@@ -27,11 +27,11 @@ set(dependencies
     std_msgs
 )
 
-add_library(dt_client_library SHARED src/dt_client_component.cpp)
+add_library(dt_client_library SHARED src/dt_client_component.cpp src/gui_tool.cpp)
 ament_target_dependencies(dt_client_library ${dependencies})
 rclcpp_components_register_nodes(dt_client_library "dt_client_component::DTClient")
 
-add_executable(dt_client_node src/dt_client_component.cpp src/dt_client_node.cpp)
+add_executable(dt_client_node src/dt_client_component.cpp src/dt_client_node.cpp src/gui_tool.cpp)
 ament_target_dependencies(dt_client_node ${dependencies})
 
 
