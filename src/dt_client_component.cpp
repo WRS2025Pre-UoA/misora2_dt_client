@@ -23,22 +23,29 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
         [this](const std::unique_ptr<cv::Mat> msg){
             result_image = std::move(*msg);
             flag_list["other"] = true;
-            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data));
+            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data) << ", Size: " << result_image.size() << ", channels: " << result_image.channels());
         });
     receive_qr_image_ = this->create_subscription<MyAdaptedType>("result_qr_image",10,
         [this](const std::unique_ptr<cv::Mat> msg){
             qr_image = std::move(*msg);
             flag_list["qr"] = true;
-            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data));
+            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data) << ", Size: " << qr_image.size() << ", channels: " << qr_image.channels());
         });
-    receive_flag_ = this->create_subscription<std_msgs::msg::Bool>("startUp",2,
+    receive_flag_ = this->create_subscription<std_msgs::msg::Bool>("startUp",1,
         [this](const std_msgs::msg::Bool::SharedPtr msg){
-            // RCLCPP_INFO_STREAM(this->get_logger(),"receive: " << msg->data << " and flag " << window_flag);
+            // RCLCPP_INFO_STREAM(this->get_logger(),"receive: " << msg->data);
             if(msg->data){
-                cv::destroyAllWindows();
+                // RCLCPP_INFO_STREAM(this->get_logger(),"OPEN");
                 window_flag = true;
-                open_window();
-                window_flag = false;
+                std::thread([this]() {
+                    open_window();
+                    window_flag = false;
+                }).detach();
+            }
+            else if(!msg->data){
+                // RCLCPP_INFO_STREAM(this->get_logger(),"CLOSE");
+                should_close = true;  // open_windowのループを止める
+                cv::destroyAllWindows();
             }
         });
 
@@ -62,7 +69,7 @@ void DTClient::open_window(){
     cv::Mat image_to_show1;
     std::string text_to_show1;
 
-    if (flag_list["other"]) {
+    if (flag_list["qr"]) {
         image_to_show1 = qr_image;
         text_to_show1 = qr_id;
     } else {
@@ -84,6 +91,7 @@ void DTClient::open_window(){
     if (flag_list["other"]) {
         image_to_show2 = result_image;
         text_to_show2 = result_data;
+        // RCLCPP_INFO_STREAM(this->get_logger(),"Size: " << image_to_show2.size());
     } else {
         DrawTool white(640, 480, cv::Scalar(255,255,255));
         white.drawText("null image2", cv::Point(250,208), 1, 0, 2);
