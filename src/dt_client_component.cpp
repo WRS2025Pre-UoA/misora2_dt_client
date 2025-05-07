@@ -11,25 +11,29 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
 
     create_save_folder(param);// 報告する内容をすべて格納するフォルダ作成
 
-    receive_data_ = this->create_subscription<std_msgs::msg::String>("result_data",10,
+    receive_data_ = this->create_subscription<std_msgs::msg::String>("result_data",1,
         [this](const std_msgs::msg::String::SharedPtr msg){
             result_data = msg->data;
+            flag_list["other"] = true;
         });
-    receive_qr_id_ = this->create_subscription<std_msgs::msg::String>("qr_id",10,
+    receive_qr_id_ = this->create_subscription<std_msgs::msg::String>("qr_id",1,
         [this](const std_msgs::msg::String::SharedPtr msg){
             qr_id = msg->data;
+            flag_list["qr"] = true;
         });
     receive_image_ = this->create_subscription<MyAdaptedType>("result_image",10,
         [this](const std::unique_ptr<cv::Mat> msg){
             result_image = std::move(*msg);
-            flag_list["other"] = true;
+            // flag_list["other"] = true;
             RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data) << ", Size: " << result_image.size() << ", channels: " << result_image.channels());
+            RCLCPP_INFO_STREAM(this->get_logger(),"flag other: " << flag_list["other"]);
         });
     receive_qr_image_ = this->create_subscription<MyAdaptedType>("result_qr_image",10,
         [this](const std::unique_ptr<cv::Mat> msg){
             qr_image = std::move(*msg);
-            flag_list["qr"] = true;
+            // flag_list["qr"] = true;
             RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data) << ", Size: " << qr_image.size() << ", channels: " << qr_image.channels());
+            RCLCPP_INFO_STREAM(this->get_logger(),"flag qr: " << flag_list["qr"]);
         });
     receive_flag_ = this->create_subscription<std_msgs::msg::Bool>("startUp",1,
         [this](const std_msgs::msg::Bool::SharedPtr msg){
@@ -46,11 +50,6 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
                 cv::destroyAllWindows();
             }
 
-            if(send_dt){
-                // func()
-                flag_list["qr"] = false;
-                flag_list["other"] = false;
-            }
         });
 
     // デジタルツインへ送信したか否かのflagをguiへ送信publisher
@@ -149,9 +148,18 @@ void DTClient::open_window(){
 
                     msg_B.data = true;
                     instance->send_flag_->publish(msg_B);
+                    // 
                     // ここに送信処理を書く
                     // 関数 指定したディレクトリにsaveする
                     // 関数 デジタルツインへ報告する
+                    // 初期化
+                    instance->flag_list["qr"] = false;
+                    instance->flag_list["other"] = false;
+                    instance->qr_id = "";
+                    instance->result_data = "";
+                    instance->qr_image.release();
+                    instance->result_image.release();
+
                     instance->should_close_send = true;  // ウィンドウを閉じるフラグ
                 }
             }
