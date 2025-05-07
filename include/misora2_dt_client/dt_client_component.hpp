@@ -32,8 +32,9 @@ class DTClient : public rclcpp::Node
     std::string result_data, qr_id;
     cv::Mat result_image, qr_image;
     std::map<std::string, bool> flag_list = {{"qr",false},{"other",false}};// 何が届いたか
-    bool window_flag = false;
-    bool should_close = false;
+    bool should_close_send = false;
+    bool should_close_back = false;
+    bool send_dt = false;
 
     // std_msgs::msg::Bool msg_B;
     explicit DTClient(const rclcpp::NodeOptions &options);
@@ -42,7 +43,6 @@ class DTClient : public rclcpp::Node
     private:
     void open_window();// 確認画面を表示
     void create_save_folder(const std::string& S);// 各タスクごとにすべてのデータを保存しとく
-    rclcpp::TimerBase::SharedPtr timer_;// 画面表示関数
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr receive_qr_id_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr receive_data_;
     rclcpp::Subscription<MyAdaptedType>::SharedPtr receive_image_;

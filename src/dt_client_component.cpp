@@ -36,16 +36,20 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
             // RCLCPP_INFO_STREAM(this->get_logger(),"receive: " << msg->data);
             if(msg->data){
                 // RCLCPP_INFO_STREAM(this->get_logger(),"OPEN");
-                window_flag = true;
                 std::thread([this]() {
                     open_window();
-                    window_flag = false;
                 }).detach();
             }
             else if(!msg->data){
                 // RCLCPP_INFO_STREAM(this->get_logger(),"CLOSE");
-                should_close = true;  // open_windowのループを止める
+                should_close_back = true;  // open_windowのループを止める
                 cv::destroyAllWindows();
+            }
+
+            if(send_dt){
+                // func()
+                flag_list["qr"] = false;
+                flag_list["other"] = false;
             }
         });
 
@@ -54,7 +58,8 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
 }
 
 void DTClient::open_window(){
-    should_close = false;
+    should_close_back = false;
+    should_close_send = false;
 
     DrawTool window(1280,720,0);// 黒画像作成
     Button back(cv::Point(50,650),cv::Size(150,50));
@@ -118,13 +123,12 @@ void DTClient::open_window(){
         cv::Rect* backBtn;
         cv::Rect* sendBtn;
         rclcpp::Logger logger;
-        bool* should_close;
         dt_client_component::DTClient* instance;
     };
  
-    CallbackData cbData = {&back_rect, &send_rect, this->get_logger(), &should_close, this};
+    CallbackData cbData = {&back_rect, &send_rect, this->get_logger(), this};
     
-    cv::setMouseCallback("window", [](int event, int x, int y,int flags, void* userdata) {
+    cv::setMouseCallback("window", [](int event, int x, int y,int /*flags*/, void* userdata) {
         CallbackData* data = static_cast<CallbackData*>(userdata);
         std_msgs::msg::Bool msg_B;
         auto* instance = data->instance;  // ← thisの代わり
@@ -136,16 +140,20 @@ void DTClient::open_window(){
                 msg_B.data = false;
 
                 instance->send_flag_->publish(msg_B);
-                *(data->should_close) = true;  // ウィンドウを閉じるフラグ
+                instance->should_close_back = true;  // ウィンドウを閉じるフラグ
                 
             } else if (data->sendBtn->contains(point)) {
                 // RCLCPP_INFO_STREAM(data->logger, "Send button clicked.");
-                msg_B.data = true;
-                instance->send_flag_->publish(msg_B);
-                // ここに送信処理を書く
-                // 関数 指定したディレクトリにsaveする
-                // 関数 デジタルツインへ報告する
-                *(data->should_close) = true;  // ウィンドウを閉じるフラグ
+                if(instance->flag_list["qr"] == true and instance->flag_list["other"] == true){
+                    instance->send_dt = true;
+
+                    msg_B.data = true;
+                    instance->send_flag_->publish(msg_B);
+                    // ここに送信処理を書く
+                    // 関数 指定したディレクトリにsaveする
+                    // 関数 デジタルツインへ報告する
+                    instance->should_close_send = true;  // ウィンドウを閉じるフラグ
+                }
             }
         }
     }, &cbData);
@@ -155,15 +163,17 @@ void DTClient::open_window(){
         cv::imshow("window", confirm_window);
 
         cv::waitKey(30);
-        if (should_close){
+        if (should_close_back or should_close_send){
             DrawTool window(1280,720,0);// 黒画像作成
-            window.drawButton(back, "back", cv::Scalar(0,0,255), -1, cv::LINE_AA, 1, cv::Scalar(25,255,255));
+            if(should_close_back)window.drawButton(back, "back", cv::Scalar(0,0,255), -1, cv::LINE_AA, 1, cv::Scalar(25,255,255));
+            if(should_close_send)window.drawButton(send, "send", cv::Scalar(0,0,255), -1, cv::LINE_AA, 1, cv::Scalar(25,255,255));
             cv::Mat confirm_window = window.getImage();
             cv::imshow("window", confirm_window);
             cv::waitKey(50);
             cv::destroyAllWindows();
             break;
         }
+
     }
 }
 
