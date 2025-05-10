@@ -14,6 +14,9 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS core)
 
+find_package(ament_cmake_python REQUIRED)
+find_package(rclpy REQUIRED)
+
 include_directories(
   include
 )
@@ -53,5 +56,12 @@ install(TARGETS
   dt_client_node
   DESTINATION lib/${PROJECT_NAME}
 )
+
+ament_python_install_package(${PROJECT_NAME})
+install(PROGRAMS
+  scripts/client_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 ament_package()

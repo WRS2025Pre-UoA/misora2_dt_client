@@ -9,7 +9,7 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
     this->declare_parameter("mode", "P6");
     std::string param = this->get_parameter("mode").as_string();
 
-    create_save_folder(param);// 報告する内容をすべて格納するフォルダ作成
+    // create_save_folder(param);// 報告する内容をすべて格納するフォルダ作成
 
     receive_data_ = this->create_subscription<std_msgs::msg::String>("result_data",1,
         [this](const std_msgs::msg::String::SharedPtr msg){
@@ -22,17 +22,17 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
             flag_list["qr"] = true;
         });
     receive_image_ = this->create_subscription<MyAdaptedType>("result_image",10,
-        [this](const std::unique_ptr<cv::Mat> msg){
-            result_image = std::move(*msg);
+        [this](const cv::Mat msg){
+            result_image = msg;
             // flag_list["other"] = true;
-            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data) << ", Size: " << result_image.size() << ", channels: " << result_image.channels());
+            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg) << ", Size: " << result_image.size() << ", channels: " << result_image.channels());
             RCLCPP_INFO_STREAM(this->get_logger(),"flag other: " << flag_list["other"]);
         });
     receive_qr_image_ = this->create_subscription<MyAdaptedType>("result_qr_image",10,
-        [this](const std::unique_ptr<cv::Mat> msg){
-            qr_image = std::move(*msg);
+        [this](const cv::Mat msg){
+            qr_image = msg;
             // flag_list["qr"] = true;
-            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg->data) << ", Size: " << qr_image.size() << ", channels: " << qr_image.channels());
+            RCLCPP_INFO_STREAM(this->get_logger(),"Receive address: " << &(msg) << ", Size: " << qr_image.size() << ", channels: " << qr_image.channels());
             RCLCPP_INFO_STREAM(this->get_logger(),"flag qr: " << flag_list["qr"]);
         });
     receive_flag_ = this->create_subscription<std_msgs::msg::Bool>("startUp",1,
@@ -54,6 +54,7 @@ DTClient::DTClient(const rclcpp::NodeOptions &options)
 
     // デジタルツインへ送信したか否かのflagをguiへ送信publisher
     send_flag_ = this->create_publisher<std_msgs::msg::Bool>("send_flag",1);
+    send_publisher_ = this->create_publisher<std_msgs::msg::Bool>("send_trigger",1);
 }
 
 void DTClient::open_window(){
@@ -152,14 +153,15 @@ void DTClient::open_window(){
                     // ここに送信処理を書く
                     // 関数 指定したディレクトリにsaveする
                     // 関数 デジタルツインへ報告する
+                    instance->send_publisher_->publish(msg_B);
                     // 初期化
                     instance->flag_list["qr"] = false;
                     instance->flag_list["other"] = false;
                     instance->qr_id = "";
                     instance->result_data = "";
+                    // instance->pressure_result_data = 0.0;
                     instance->qr_image.release();
                     instance->result_image.release();
-
                     instance->should_close_send = true;  // ウィンドウを閉じるフラグ
                 }
             }
@@ -185,23 +187,23 @@ void DTClient::open_window(){
     }
 }
 
-void DTClient::create_save_folder(const std::string& S) {
-    fs::path basePath = fs::current_path();  // 現在のディレクトリ
-    fs::path saveFolder = basePath / "save_folder";
-    fs::path targetFolder = saveFolder / S;
+// void DTClient::create_save_folder(const std::string& S) {
+//     fs::path basePath = fs::current_path();  // 現在のディレクトリ
+//     fs::path saveFolder = basePath / "save_folder";
+//     fs::path targetFolder = saveFolder / S;
 
-    // save_folder がなければ作成
-    if (!fs::exists(saveFolder)) {
-        RCLCPP_INFO_STREAM(this->get_logger(), "Creating: " << saveFolder);
-        fs::create_directory(saveFolder);
-    }
+//     // save_folder がなければ作成
+//     if (!fs::exists(saveFolder)) {
+//         RCLCPP_INFO_STREAM(this->get_logger(), "Creating: " << saveFolder);
+//         fs::create_directory(saveFolder);
+//     }
 
-    // save_folder/S がなければ作成
-    if (!fs::exists(targetFolder)) {
-        RCLCPP_INFO_STREAM(this->get_logger(),"Creating: " << targetFolder);
-        fs::create_directory(targetFolder);
-    }
-}
+//     // save_folder/S がなければ作成
+//     if (!fs::exists(targetFolder)) {
+//         RCLCPP_INFO_STREAM(this->get_logger(),"Creating: " << targetFolder);
+//         fs::create_directory(targetFolder);
+//     }
+// }
 
 }//namespace dt_client_component
 
