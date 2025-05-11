@@ -11,6 +11,7 @@ import csv
 import os
 import requests
 import json
+from datetime import datetime
 
 def image_resize(image, width=1280):
     h, w = image.shape[:2]
@@ -84,6 +85,7 @@ class ClientNode(Node):
         self.mac_id = self.get_parameter('mac_id').get_parameter_value().string_value
         self.mission = self.get_parameter('mission').get_parameter_value().string_value
 
+        self.client_ready = False  # ← 初期化
         try:
             self.client_ready = self._initialize_client(self.host, self.robot_id, self.mac_id, self.get_logger().info)
         except Exception as e:
@@ -101,6 +103,14 @@ class ClientNode(Node):
 
         # 送信するという信号を受け取る
         self.send_trigger_ = self.create_subscription(Bool, 'send_trigger', self.send_to_dt_callback, 10)
+
+        # sensor_msgs/Image->cv_imageの変換で使用
+        self.bridge = CvBridge()
+        # 使用する変数の初期化
+        self.result_image = None  # 画像を空にする（Noneに設定）
+        self.qr_id = ""           # QR IDを空にリセット
+        self.result_data = ""     # 結果データを空にリセット
+
 
     def _initialize_client(self, host, robot_id, mac_id, logger=print):
         values = {"rob_id": robot_id, "mac_id": mac_id}
@@ -143,50 +153,56 @@ class ClientNode(Node):
 
     def receive_data_callback(self, msg):
         self.result_data = msg.data
-       
-
-    # def receive_data_p_callback(self, msg):
-    #     self.result_data_p = msg.data
-    #     self.result_data = ""
 
     def receive_id_callback(self, msg):
         self.qr_id = msg.data
     
     def receive_image_callback(self, msg):
-        self.result_image = msg.data
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as e:
+            self.get_logger().error(e)
+            return
+
+        if cv_image is None or cv_image.size == 0:
+            self.get_logger().warn("Null image received")
+            return
+
+        self.result_image = cv_image
         
     def send_to_dt_callback(self, msg):
+        # 条件を満たしていれば送信処理を行う
+        if (self.result_image is not None and self.result_image.size > 0 and self.qr_id != "" and self.result_data != ""):
 
-        # jpegに変換(サイズ変更が必要かも)
-        before_converted_image = image_resize(result_image.copy())
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 100]
+            # jpegに変換(サイズ変更が必要かも)
+            before_converted_image = image_resize(self.result_image.copy())
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 100]
 
-        result, encoded_image = cv2.imencode(
-            '.jpg', before_converted_image, encode_param)
+            result, encoded_image = cv2.imencode(
+                '.jpg', before_converted_image, encode_param)
 
-        if False == result:
-            self.get_logger().error('could not encode image!')
-            
-        image_prepared = encoded_image.tobytes()
+            if not result:
+                self.get_logger().error('Could not encode image!')
 
-        # ローカルへの保存
-        save_local(self.qr_id, str(result_data), result_image,
+            image_prepared = encoded_image.tobytes()
+
+            # ローカルへの保存
+            save_local(self.qr_id, str(self.result_data), self.result_image,
                     self.robot_id, self.mission, logger=self.get_logger().info)
-        
-        # 送信
-        if self.client_ready != False:
-            try:
-                self.client.request(self.id,
-                                    str(self.result_data), image_prepared)
-            except Exception as e:
-                self.get_logger().error("Faild sending to RMS: "+str(e))
+            
+            # 送信
+            if self.client_ready != False:
+                try:
+                    self.client.request(self.id, str(self.result_data), image_prepared)
+                except Exception as e:
+                    self.get_logger().error("Failed sending to RMS: " + str(e))
+            else:
+                self.get_logger().error("No connection to RMS")
+
+            # 送信後の初期化
+            self.result_image = None  # 画像を空にする（Noneに設定）
+            self.qr_id = ""           # QR IDを空にリセット
+            self.result_data = ""     # 結果データを空にリセット
+
         else:
-            self.get_logger().error("No connection to RMS")
-
-        # 初期化
-        self.result_image = self.none_image.copy()
-        self.qr_value = ""
-        self.result_data = ""
-
-
-    
+            self.get_logger().warn("Skipping send process: missing data")
