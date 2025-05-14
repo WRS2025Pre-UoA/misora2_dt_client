@@ -74,10 +74,12 @@ void DTClient::open_window(){
     cv::Mat image_to_show1;
     std::string text_to_show1;
 
-    if (flag_list["qr"]) {
+    if (flag_list["qr"] and not(qr_image.empty())) {
+        RCLCPP_INFO_STREAM(this->get_logger(),"plot qr_image");
         image_to_show1 = qr_image;
         text_to_show1 = qr_id;
     } else {
+        RCLCPP_INFO_STREAM(this->get_logger(),"plot null_image1");
         DrawTool white(640, 480, cv::Scalar(255,255,255));
         white.drawText("null image1", cv::Point(250,208), 1, 0, 2);
         image_to_show1 = white.getImage();
@@ -93,11 +95,13 @@ void DTClient::open_window(){
     cv::Mat image_to_show2;
     std::string text_to_show2;
 
-    if (flag_list["other"]) {
+    if (flag_list["other"] and not(result_image.empty())) {
+        RCLCPP_INFO_STREAM(this->get_logger(),"plot result_image");
         image_to_show2 = result_image;
         text_to_show2 = result_data;
         // RCLCPP_INFO_STREAM(this->get_logger(),"Size: " << image_to_show2.size());
     } else {
+        RCLCPP_INFO_STREAM(this->get_logger(),"plot null_image2");
         DrawTool white(640, 480, cv::Scalar(255,255,255));
         white.drawText("null image2", cv::Point(250,208), 1, 0, 2);
         image_to_show2 = white.getImage();
@@ -105,6 +109,7 @@ void DTClient::open_window(){
     }
 
     window.drawImage(image_to_show2, pos2, size2);
+    RCLCPP_INFO_STREAM(this->get_logger(),"setting result_image or null_image");
     Button text_box2(cv::Point(pos2.x, pos2.y + size2.height), cv::Size(size2.width, 100));
     window.drawButton_new(text_box2, text_to_show2, 0, -1, cv::LINE_AA, cv::Scalar(255,255,255), 2);
     // --------------------------------------
@@ -186,24 +191,6 @@ void DTClient::open_window(){
 
     }
 }
-
-// void DTClient::create_save_folder(const std::string& S) {
-//     fs::path basePath = fs::current_path();  // 現在のディレクトリ
-//     fs::path saveFolder = basePath / "save_folder";
-//     fs::path targetFolder = saveFolder / S;
-
-//     // save_folder がなければ作成
-//     if (!fs::exists(saveFolder)) {
-//         RCLCPP_INFO_STREAM(this->get_logger(), "Creating: " << saveFolder);
-//         fs::create_directory(saveFolder);
-//     }
-
-//     // save_folder/S がなければ作成
-//     if (!fs::exists(targetFolder)) {
-//         RCLCPP_INFO_STREAM(this->get_logger(),"Creating: " << targetFolder);
-//         fs::create_directory(targetFolder);
-//     }
-// }
 
 }//namespace dt_client_component
 

@@ -12,6 +12,14 @@ DrawTool::DrawTool(int width, int height, cv::Scalar backgroundColor) : image(cv
 void DrawTool::drawImage(const cv::Mat& img, cv::Point pos, cv::Size size){
     cv::Mat resizedImg;
     cv::resize(img, resizedImg, size);
+
+     // チャンネル数をimageに合わせる（imageはBGR想定）
+    if (resizedImg.channels() == 1 && image.channels() == 3) {
+        cv::cvtColor(resizedImg, resizedImg, cv::COLOR_GRAY2BGR);
+    } else if (resizedImg.channels() == 4 && image.channels() == 3) {
+        cv::cvtColor(resizedImg, resizedImg, cv::COLOR_BGRA2BGR); // 万が一alpha付き画像が来た場合
+    }
+
     resizedImg.copyTo(image(cv::Rect(pos,size)));
 }
 
