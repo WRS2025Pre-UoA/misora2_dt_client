@@ -70,9 +70,9 @@ def save_local(qr, value, img, robot_id, mission, result_folder='save_folder/', 
         ])
 
 
-class ClientNode(Node):
+class ClientNodeValue(Node):
     def __init__(self):
-        super().__init__('client_node')
+        super().__init__('client_node_value')
 
         #通信クライアントの初期化
         self.declare_parameter('host', '')
@@ -112,9 +112,9 @@ class ClientNode(Node):
         self.result_data = ""     # 結果データを空にリセット
 
 
-    def _initialize_client(self, host, robot_id, mac_id, logger=print):
+    def _initialize_client(self, host, robot_id, mac_id, logger=print): # 配布されたrobot_registration_example.pyに該当
         values = {"rob_id": robot_id, "mac_id": mac_id}
-        url = 'http://' + host + '/rms_wrs/api/set_mac_id.php' # to register the robot
+        url = 'https://'+host+'/WRS2025/api/set_mac_id.php' # to register the robot mac ID
 
         self.session = requests.Session() # sesstionが終わるようにメソッド変数として持たせる
         response = self.session.post(url, json=values)
@@ -133,8 +133,9 @@ class ClientNode(Node):
     
     def request(self, id, value, img, logger=print):
         logger(id, value)
-
-        url = 'http://'+self.host+'/rms_wrs/api/set_eqpt_val.php'
+        # url_report_pos = 'https://'+self.host+'/WRS2025/api/notify_rob_pos.php' # to send robot position 
+        url_report_values = 'https://'+self.host+'/WRS2025/api/notify_entity_status.php' # to send equipment value & image 
+        # 画像処理後の報告-----------------------------------------------
         values = {
             "eqpt_nm": id,
             "value": value,
@@ -150,7 +151,8 @@ class ClientNode(Node):
             logger('post success')
         else:
             raise Exception(f"Request Error: {response.text}")
-
+        # -------------------------------------------------------------
+        
     def receive_data_callback(self, msg):
         self.result_data = msg.data
 

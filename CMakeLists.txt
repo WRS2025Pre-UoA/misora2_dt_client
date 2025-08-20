@@ -59,7 +59,7 @@ install(TARGETS
 
 ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
-  scripts/client_node.py
+  scripts/client_node_value.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
