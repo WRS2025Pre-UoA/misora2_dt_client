@@ -13,7 +13,9 @@ import requests
 import json
 from datetime import datetime
 
-def image_resize(image, width=1280):
+from misora2_custom_msg.msg import Digital
+
+def image_resize(image, width=640):# MISORAの方にこの処理はいらない
     h, w = image.shape[:2]
     height = round(h * (width / w))
     image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
@@ -93,16 +95,19 @@ class ClientNodeValue(Node):
 
         # subscriber作成
         # 報告内容が更新されるたびに送信用変数を更新する
-        self.qr_id_ = self.create_subscription(String, 'qr_id', 
-                                                self.receive_id_callback, 10)
-        self.result_data_ = self.create_subscription(String, 'result_data', 
-                                                        self.receive_data_callback, 10)
-        # self.result_pressure_ = self.create_subscription(Float64, 'result_data_p', self.receive_data_p_callback, 10)
-        self.result_image_ = self.create_subscription(Image, 'result_image', 
-                                                        self.receive_image_callback, 10)
+        self.receive_data_ = self.create_subscription(Digital, 'digital_data', 
+                                                self.receive_data_callback, 10)
 
-        # 送信するという信号を受け取る
-        self.send_trigger_ = self.create_subscription(Bool, 'send_trigger', self.send_to_dt_callback, 10)
+        # 500msごとにtimer_callbackを呼ぶ
+        self.timer = self.create_timer(0.5, self.send_to_dt_callback)
+        # self.result_data_ = self.create_subscription(String, 'result_data', 
+        #                                                 self.receive_data_callback, 10)
+        # # self.result_pressure_ = self.create_subscription(Float64, 'result_data_p', self.receive_data_p_callback, 10)
+        # self.result_image_ = self.create_subscription(Image, 'result_image', 
+        #                                                 self.receive_image_callback, 10)
+
+        # # 送信するという信号を受け取る
+        # self.send_trigger_ = self.create_subscription(Bool, 'send_trigger', self.send_to_dt_callback, 10)
 
         # sensor_msgs/Image->cv_imageの変換で使用
         self.bridge = CvBridge()
@@ -133,7 +138,7 @@ class ClientNodeValue(Node):
     
     def request(self, id, value, img, logger=print):
         logger(id, value)
-        # url_report_pos = 'https://'+self.host+'/WRS2025/api/notify_rob_pos.php' # to send robot position 
+        
         url_report_values = 'https://'+self.host+'/WRS2025/api/notify_entity_status.php' # to send equipment value & image 
         # 画像処理後の報告-----------------------------------------------
         values = {
@@ -141,9 +146,9 @@ class ClientNodeValue(Node):
             "value": value,
             "mac_id": self.mac_id
         }
-        files = {'image': ("meter_result.jpg", img)}
+        files = {'image': ("result.jpg", img)}
 
-        response = requests.post(url, files=files, data=values)
+        response = requests.post(url_report_values, files=files, data=values)
         if response.status_code != requests.codes.ok:
             raise Exception(
                 f"Request Status Error: {response.status_code}")
@@ -154,25 +159,11 @@ class ClientNodeValue(Node):
         # -------------------------------------------------------------
         
     def receive_data_callback(self, msg):
-        self.result_data = msg.data
+        self.result_data = msg.result
+        self.qr_id = msg.id
+        self.result_image = self.bridge.imgmsg_to_cv2(msg.image, "bgr8")
 
-    def receive_id_callback(self, msg):
-        self.qr_id = msg.data
-    
-    def receive_image_callback(self, msg):
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        except CvBridgeError as e:
-            self.get_logger().error(e)
-            return
-
-        if cv_image is None or cv_image.size == 0:
-            self.get_logger().warn("Null image received")
-            return
-
-        self.result_image = cv_image
-        
-    def send_to_dt_callback(self, msg):
+    def send_to_dt_callback(self):
         # 条件を満たしていれば送信処理を行う
         if (self.result_image is not None and self.result_image.size > 0 and self.qr_id != "" and self.result_data != ""):
 
@@ -195,7 +186,7 @@ class ClientNodeValue(Node):
             # 送信
             if self.client_ready != False:
                 try:
-                    self.client.request(self.id, str(self.result_data), image_prepared)
+                    self.request(self.id, str(self.result_data), image_prepared)
                 except Exception as e:
                     self.get_logger().error("Failed sending to RMS: " + str(e))
             else:
