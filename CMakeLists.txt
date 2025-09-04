@@ -17,6 +17,8 @@ find_package(OpenCV REQUIRED COMPONENTS core)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
 
+find_package(misora2_custom_msg REQUIRED)
+
 include_directories(
   include
 )
@@ -28,6 +30,7 @@ set(dependencies
     OpenCV
     sensor_msgs
     std_msgs
+    misora2_custom_msg
 )
 
 add_library(dt_client_library SHARED src/dt_client_component.cpp src/gui_tool.cpp)
@@ -60,6 +63,7 @@ install(TARGETS
 ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/client_node_value.py
+  scripts/client_node_pos.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
