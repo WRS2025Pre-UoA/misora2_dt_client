@@ -33,12 +33,12 @@ set(dependencies
     misora2_custom_msg
 )
 
-add_library(dt_client_library SHARED src/dt_client_component.cpp src/gui_tool.cpp)
-ament_target_dependencies(dt_client_library ${dependencies})
-rclcpp_components_register_nodes(dt_client_library "dt_client_component::DTClient")
+#add_library(dt_client_library SHARED src/dt_client_component.cpp src/gui_tool.cpp)
+#ament_target_dependencies(dt_client_library ${dependencies})
+#rclcpp_components_register_nodes(dt_client_library "dt_client_component::DTClient")
 
-add_executable(dt_client_node src/dt_client_component.cpp src/dt_client_node.cpp src/gui_tool.cpp)
-ament_target_dependencies(dt_client_node ${dependencies})
+#add_executable(dt_client_node src/dt_client_component.cpp src/dt_client_node.cpp src/gui_tool.cpp)
+#ament_target_dependencies(dt_client_node ${dependencies})
 
 
 if(BUILD_TESTING)
@@ -49,14 +49,14 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-  dt_client_library
+  #dt_client_library
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 
 install(TARGETS
-  dt_client_node
+  #dt_client_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

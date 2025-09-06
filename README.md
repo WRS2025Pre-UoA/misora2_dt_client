@@ -33,8 +33,10 @@
 git clone git@github.com:WRS2025Pre-UoA/misora2_operation.git
 cd [ワークスペース]
 chmod +x src/misora2_dt_client/scripts/client_node.py
+chmod +x src/misora2_dt_client/scripts/client_pos.py
 colon build
 source install/setup.bash
 ros2 run misora2_dt_client dt_client_node # 確認画面ノード
 ros2 run misora2_dt_client client_node.py # 報告ノード
+ros2 run misora2_dt_client client_pos.py # 位置情報報告ノード
 ~~~
