@@ -86,12 +86,13 @@ class ClientNodeValue(Node):
         self.robot_id = self.get_parameter('robot_id').get_parameter_value().string_value
         self.mac_id = self.get_parameter('mac_id').get_parameter_value().string_value
         self.mission = self.get_parameter('mission').get_parameter_value().string_value
+        self.get_logger().info(f"MAC ID : {self.mac_id}")
 
-        self.client_ready = False  # ← 初期化
-        try:
-            self.client_ready = self._initialize_client(self.host, self.robot_id, self.mac_id, self.get_logger().info)
-        except Exception as e:
-            self.get_logger().error(str(e))
+        self.client_ready = True  # ← 初期化
+        # try:
+        #     self.client_ready = self._initialize_client(self.host, self.robot_id, self.mac_id, self.get_logger().info)
+        # except Exception as e:
+        #     self.get_logger().error(str(e))
 
         # subscriber作成
         # 報告内容が更新されるたびに送信用変数を更新する
@@ -186,7 +187,7 @@ class ClientNodeValue(Node):
             # 送信
             if self.client_ready != False:
                 try:
-                    self.request(self.id, str(self.result_data), image_prepared)
+                    self.request(self.qr_id, str(self.result_data), image_prepared)
                 except Exception as e:
                     self.get_logger().error("Failed sending to RMS: " + str(e))
             else:
@@ -199,3 +200,4 @@ class ClientNodeValue(Node):
 
         else:
             self.get_logger().warn("Skipping send process: missing data")
+# str(self.result_data)
