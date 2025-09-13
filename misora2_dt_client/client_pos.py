@@ -30,11 +30,11 @@ class ClientNodePos(Node):
         self.mac_id = self.get_parameter('mac_id').get_parameter_value().string_value
         self.mission = self.get_parameter('mission').get_parameter_value().string_value
 
-        self.client_ready = False  # ← 初期化
-        try:
-            self.client_ready = self._initialize_client(self.host, self.robot_id, self.mac_id, self.get_logger().info)
-        except Exception as e:
-            self.get_logger().error(str(e))
+        self.client_ready = True  # ← 初期化
+        # try:
+        #     self.client_ready = self._initialize_client(self.host, self.robot_id, self.mac_id, self.get_logger().info)
+        # except Exception as e:
+        #     self.get_logger().error(str(e))
 
         # subscriber作成
         self.pos_sub = self.create_subscription(
@@ -43,6 +43,7 @@ class ClientNodePos(Node):
             self.pos_callback,  # ← コールバック関数
             10                  # ← キューサイズ
         )
+        self.session = requests.Session()
         
     def _initialize_client(self, host, robot_id, mac_id, logger=print): # 配布されたrobot_registration_example.pyに該当
         values = {"rob_id": robot_id, "mac_id": mac_id}
