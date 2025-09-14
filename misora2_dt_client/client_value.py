@@ -100,7 +100,7 @@ class ClientNodeValue(Node):
                                                 self.receive_data_callback, 10)
 
         # 500msごとにtimer_callbackを呼ぶ
-        self.timer = self.create_timer(0.5, self.send_to_dt_callback)
+        # self.timer = self.create_timer(0.5, self.send_to_dt_callback)
         # self.result_data_ = self.create_subscription(String, 'result_data', 
         #                                                 self.receive_data_callback, 10)
         # # self.result_pressure_ = self.create_subscription(Float64, 'result_data_p', self.receive_data_p_callback, 10)
@@ -163,6 +163,8 @@ class ClientNodeValue(Node):
         self.result_data = msg.result
         self.qr_id = msg.id
         self.result_image = self.bridge.imgmsg_to_cv2(msg.image, "bgr8")
+
+        send_to_dt_callback(self)
 
     def send_to_dt_callback(self):
         # 条件を満たしていれば送信処理を行う
