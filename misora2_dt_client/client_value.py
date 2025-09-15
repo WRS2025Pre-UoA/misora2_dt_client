@@ -159,13 +159,6 @@ class ClientNodeValue(Node):
             raise Exception(f"Request Error: {response.text}")
         # -------------------------------------------------------------
         
-    def receive_data_callback(self, msg):
-        self.result_data = msg.result
-        self.qr_id = msg.id
-        self.result_image = self.bridge.imgmsg_to_cv2(msg.image, "bgr8")
-
-        send_to_dt_callback(self)
-
     def send_to_dt_callback(self):
         # 条件を満たしていれば送信処理を行う
         if (self.result_image is not None and self.result_image.size > 0 and self.qr_id != "" and self.result_data != ""):
@@ -203,3 +196,9 @@ class ClientNodeValue(Node):
         else:
             self.get_logger().warn("Skipping send process: missing data")
 # str(self.result_data)
+    def receive_data_callback(self, msg):
+        self.result_data = msg.result
+        self.qr_id = msg.id
+        self.result_image = self.bridge.imgmsg_to_cv2(msg.image, "bgr8")
+
+        self.send_to_dt_callback()
