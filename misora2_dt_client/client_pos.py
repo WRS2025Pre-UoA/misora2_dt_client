@@ -69,6 +69,9 @@ class ClientNodePos(Node):
 
     def request_pos(self, x, y, z, roll, pitch, yaw):
         url_report_pos = 'https://' + self.host + '/WRS2025/api/notify_rob_pos.php'
+        self.get_logger().info(
+    f"x: {x:.3f}, y: {y:.3f}, z: {z:.3f}, roll: {roll:.3f}, pitch: {pitch:.3f}, yaw: {yaw:.3f}"
+)
         if self.client_ready:
             values = {
                 "mac_id": self.mac_id,
