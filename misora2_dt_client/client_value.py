@@ -21,7 +21,8 @@ def image_resize(image, width=640):# MISORAの方にこの処理はいらない
     image = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
     return image
 
-def save_local(qr, value, img, robot_id, mission, result_folder='save_folder/', logger=print):
+def save_local(qr, value, img, robot_id, mission,
+               result_folder='save_folder/', logger=print, save_image=True):
     mission_folder = os.path.join(result_folder, mission)
     csv_file = os.path.join(mission_folder, 'data.csv')
     image_directory = os.path.join(mission_folder, 'image')
@@ -39,28 +40,27 @@ def save_local(qr, value, img, robot_id, mission, result_folder='save_folder/', 
                             'Image Filename', 'Robot ID'])
         logger(f"{csv_file} を作成し、ヘッダーを追加しました。")
 
-    # imageディレクトリが存在しない場合は作成
-    if not os.path.exists(image_directory):
-        os.makedirs(image_directory, exist_ok=True)
-        logger(f"{image_directory} ディレクトリを作成しました。")
-
     # タイムスタンプの生成（ISO 8601形式）
     timestamp = datetime.now().isoformat()
 
-    # ディレクトリ内の画像ファイル数をカウントして次のファイル名を決定
-    existing_images = [f for f in os.listdir(
-                        image_directory) if f.endswith('.jpg')]
-    row_count = len(existing_images) + 1  # 現在の画像数に1を足して次の番号を決定
+    image_filename = ""
+    if save_image and img is not None:
+        # imageディレクトリが存在しない場合は作成
+        if not os.path.exists(image_directory):
+            os.makedirs(image_directory, exist_ok=True)
+            logger(f"{image_directory} ディレクトリを作成しました。")
 
-    # 画像ファイル名の作成
-    image_filename = f'result_{row_count}.jpg'
-    image_path = os.path.join(image_directory, image_filename)
-    logger(f"{image_directory}に画像ファイル{image_filename}を生成しました。")
+        # ディレクトリ内の画像ファイル数をカウントして次のファイル名を決定
+        existing_images = [f for f in os.listdir(image_directory) if f.endswith('.jpg')]
+        row_count = len(existing_images) + 1
+        image_filename = f'result_{row_count}.jpg'
+        image_path = os.path.join(image_directory, image_filename)
+        logger(f"{image_directory}に画像ファイル{image_filename}を生成しました。")
 
-    # 画像ファイルの保存
-    cv2.imwrite(image_path, img)
+        # 画像ファイルの保存
+        cv2.imwrite(image_path, img)
 
-    # CSVファイルへの追記モードで書き込み
+    # CSVファイルへの追記モードで書き込み（画像がない場合は空文字）
     with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -70,6 +70,7 @@ def save_local(qr, value, img, robot_id, mission, result_folder='save_folder/', 
             image_filename,
             robot_id
         ])
+
 
 
 class ClientNodeValue(Node):
@@ -99,23 +100,13 @@ class ClientNodeValue(Node):
         self.receive_data_ = self.create_subscription(Digital, 'digital_data', 
                                                 self.receive_data_callback, 10)
 
-        # 500msごとにtimer_callbackを呼ぶ
-        # self.timer = self.create_timer(0.5, self.send_to_dt_callback)
-        # self.result_data_ = self.create_subscription(String, 'result_data', 
-        #                                                 self.receive_data_callback, 10)
-        # # self.result_pressure_ = self.create_subscription(Float64, 'result_data_p', self.receive_data_p_callback, 10)
-        # self.result_image_ = self.create_subscription(Image, 'result_image', 
-        #                                                 self.receive_image_callback, 10)
-
-        # # 送信するという信号を受け取る
-        # self.send_trigger_ = self.create_subscription(Bool, 'send_trigger', self.send_to_dt_callback, 10)
-
         # sensor_msgs/Image->cv_imageの変換で使用
         self.bridge = CvBridge()
         # 使用する変数の初期化
         self.result_image = None  # 画像を空にする（Noneに設定）
         self.qr_id = ""           # QR IDを空にリセット
         self.result_data = ""     # 結果データを空にリセット
+        self.topic = ""
 
 
     def _initialize_client(self, host, robot_id, mac_id, logger=print): # 配布されたrobot_registration_example.pyに該当
@@ -160,45 +151,73 @@ class ClientNodeValue(Node):
         # -------------------------------------------------------------
         
     def send_to_dt_callback(self):
-        # 条件を満たしていれば送信処理を行う
-        if (self.result_image is not None and self.result_image.size > 0 and self.qr_id != "" and self.result_data != ""):
+        if (self.result_image is not None and self.result_image.size > 0 and
+            self.qr_id != "" and self.result_data != "" and self.topic != ""):
 
-            # jpegに変換(サイズ変更が必要かも)
-            before_converted_image = image_resize(self.result_image.copy())
-            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 100]
+            # mono8かどうか判定
+            is_mono8 = (len(self.result_image.shape) == 2 or
+                        (len(self.result_image.shape) == 3 and self.result_image.shape[2] == 1))
+            # 黒画像か判定
+            is_black = False
+            if is_mono8 and cv2.countNonZero(self.result_image) == 0:
+                is_black = True
 
-            result, encoded_image = cv2.imencode(
-                '.jpg', before_converted_image, encode_param)
+            image_prepared = None
 
-            if not result:
-                self.get_logger().error('Could not encode image!')
+            # save_local & request の動作分岐
+            if is_black:
+                # 黒画像: CSVのみ
+                save_local(self.qr_id, str(self.result_data), None,
+                        self.robot_id, self.mission, logger=self.get_logger().info, save_image=False)
 
-            image_prepared = encoded_image.tobytes()
+            elif self.topic == "cracks":
+                # cracks: CSV + 画像保存, 送信は値だけ
+                save_local(self.qr_id, str(self.result_data), self.result_image,
+                        self.robot_id, self.mission, logger=self.get_logger().info, save_image=True)
 
-            # ローカルへの保存
-            save_local(self.qr_id, str(self.result_data), self.result_image,
-                    self.robot_id, self.mission, logger=self.get_logger().info)
-            
+            else:
+                # 通常: CSV + 画像保存 + 送信
+                save_local(self.qr_id, str(self.result_data), self.result_image,
+                        self.robot_id, self.mission, logger=self.get_logger().info, save_image=True)
+
+                before_converted_image = image_resize(self.result_image.copy())
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 100]
+                result, encoded_image = cv2.imencode('.jpg', before_converted_image, encode_param)
+                if not result:
+                    self.get_logger().error('Could not encode image!')
+                else:
+                    image_prepared = encoded_image.tobytes()
+
             # 送信
-            if self.client_ready != False:
+            if self.client_ready:
                 try:
-                    self.request(self.qr_id, str(self.result_data), image_prepared)
+                    if image_prepared is not None:
+                        self.request(self.qr_id, str(self.result_data), image_prepared)
+                    else:
+                        self.request(self.qr_id, str(self.result_data), None)
                 except Exception as e:
                     self.get_logger().error("Failed sending to RMS: " + str(e))
             else:
                 self.get_logger().error("No connection to RMS")
 
-            # 送信後の初期化
-            self.result_image = None  # 画像を空にする（Noneに設定）
-            self.qr_id = ""           # QR IDを空にリセット
-            self.result_data = ""     # 結果データを空にリセット
+            # 初期化
+            self.result_image = None
+            self.qr_id = ""
+            self.result_data = ""
 
         else:
             self.get_logger().warn("Skipping send process: missing data")
+
 # str(self.result_data)
     def receive_data_callback(self, msg):
         self.result_data = msg.result
         self.qr_id = msg.id
-        self.result_image = self.bridge.imgmsg_to_cv2(msg.image, "bgr8")
+        try:
+            # encoding をそのまま使う
+            self.result_image = self.bridge.imgmsg_to_cv2(msg.image, desired_encoding="passthrough")
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert image: {e}")
+            return
+        self.topic = msg.topic # どの報告を行うか
 
         self.send_to_dt_callback()

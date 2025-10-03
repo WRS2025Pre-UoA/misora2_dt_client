@@ -29,7 +29,6 @@ class ClientNodePos(Node):
         self.robot_id = self.get_parameter('robot_id').get_parameter_value().string_value
         self.mac_id = self.get_parameter('mac_id').get_parameter_value().string_value
         self.mission = self.get_parameter('mission').get_parameter_value().string_value
-
         self.client_ready = True  # ← 初期化
         # try:
         #     self.client_ready = self._initialize_client(self.host, self.robot_id, self.mac_id, self.get_logger().info)
@@ -48,7 +47,8 @@ class ClientNodePos(Node):
     def _initialize_client(self, host, robot_id, mac_id, logger=print): # 配布されたrobot_registration_example.pyに該当
         values = {"rob_id": robot_id, "mac_id": mac_id}
         url = 'https://'+host+'/WRS2025/api/set_mac_id.php' # to register the robot mac ID
-
+        # logger(robot_id)
+        # logger(mac_id)
         self.session = requests.Session() # sesstionが終わるようにメソッド変数として持たせる
         response = self.session.post(url, json=values)
         if response.status_code != requests.codes.ok:
