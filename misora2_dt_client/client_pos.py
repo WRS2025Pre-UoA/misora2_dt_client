@@ -69,9 +69,16 @@ class ClientNodePos(Node):
 
     def request_pos(self, x, y, z, roll, pitch, yaw):
         url_report_pos = 'https://' + self.host + '/WRS2025/api/notify_rob_pos.php'
+        # 小数3桁に丸め
+        x = round(x, 3)
+        y = round(y, 3)
+        z = round(z, 3)
+        roll = round(roll, 3)
+        pitch = round(pitch, 3)
+        yaw = round(yaw, 3)
         self.get_logger().info(
-    f"x: {x:.3f}, y: {y:.3f}, z: {z:.3f}, roll: {roll:.3f}, pitch: {pitch:.3f}, yaw: {yaw:.3f}"
-)
+            f"x: {x:.3f}, y: {y:.3f}, z: {z:.3f}, roll: {roll:.3f}, pitch: {pitch:.3f}, yaw: {yaw:.3f}"
+        )
         if self.client_ready:
             values = {
                 "mac_id": self.mac_id,
