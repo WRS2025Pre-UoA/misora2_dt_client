@@ -170,10 +170,10 @@ class ClientNodeValue(Node):
                 save_local(self.qr_id, str(self.result_data), None,
                         self.robot_id, self.mission, logger=self.get_logger().info, save_image=False)
 
-            elif self.topic == "cracks":
-                # cracks: CSV + 画像保存, 送信は値だけ
-                save_local(self.qr_id, str(self.result_data), self.result_image,
-                        self.robot_id, self.mission, logger=self.get_logger().info, save_image=True)
+            # elif self.topic == "cracks":
+            #     # cracks: CSV + 画像保存, 送信は値だけ
+            #     save_local(self.qr_id, str(self.result_data), self.result_image,
+            #             self.robot_id, self.mission, logger=self.get_logger().info, save_image=True)
 
             else:
                 # 通常: CSV + 画像保存 + 送信
